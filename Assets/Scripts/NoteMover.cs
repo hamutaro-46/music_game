@@ -3,7 +3,7 @@ using UnityEngine;
 public class NoteMover : MonoBehaviour
 {
     private float speed = 5f; // 落下速度
-    private float destroyY = -1f; // ノーツが消えるY座標
+    private float destroyY = -3f; // ノーツが消えるY座標
     
     void Update()
     {
