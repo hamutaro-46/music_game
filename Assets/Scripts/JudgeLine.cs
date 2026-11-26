@@ -21,6 +21,7 @@ public class JudgeLine : MonoBehaviour
     {
         if (Input.GetKeyDown(inputKey))
         {
+            Debug.Log("キーが押された");
             JudgeNearestNotes();
         }
     }
@@ -28,6 +29,7 @@ public class JudgeLine : MonoBehaviour
     private void JudgeNearestNotes()
     {
         if (notesInRange.Count == 0) return;
+        Debug.Log("範囲内のノーツの数: " + notesInRange.Count);
 
         // 最も近いノーツを見つける
         Transform bestNote = null;
@@ -46,6 +48,7 @@ public class JudgeLine : MonoBehaviour
         }
 
         // 距離に応じてPerfect、Good、Missを判定する
+        if (bestNote == null) return;
         if (bestDist <= perfectRange)
         {
             ShowJudge("Perfect!", Color.yellow);
