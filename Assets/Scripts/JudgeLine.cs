@@ -1,13 +1,18 @@
+using System.Collections; // ★追加
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
 public class JudgeLine : MonoBehaviour
 {
+    private const int PERFECT_POINT = 300; // パーフェクト時の加算点数 
+    private const int GOOD_POINT    = 100; // グッド時の加算点数 
+
     [SerializeField] private KeyCode inputKey = KeyCode.Space; // 判定ラインに対応するキー
     [SerializeField] private float perfectRange = 0.1f; // パーフェクト判定の範囲
     [SerializeField] private float goodRange  = 0.3f; // グッド判定の範囲
     [SerializeField] private TextMeshProUGUI judgeText; // 判定結果を表示するテキスト
+    [SerializeField] private ScoreManager scoreManager; // scoreManagerへの参照 
 
     // 判定ライン付近にいるノーツのリスト
     private readonly List<Transform> notesInRange = new List<Transform>();
@@ -21,7 +26,6 @@ public class JudgeLine : MonoBehaviour
     {
         if (Input.GetKeyDown(inputKey))
         {
-            Debug.Log("キーが押された");
             JudgeNearestNotes();
         }
     }
@@ -29,7 +33,6 @@ public class JudgeLine : MonoBehaviour
     private void JudgeNearestNotes()
     {
         if (notesInRange.Count == 0) return;
-        Debug.Log("範囲内のノーツの数: " + notesInRange.Count);
 
         // 最も近いノーツを見つける
         Transform bestNote = null;
@@ -48,17 +51,19 @@ public class JudgeLine : MonoBehaviour
         }
 
         // 距離に応じてPerfect、Good、Missを判定する
-        if (bestNote == null) return;
         if (bestDist <= perfectRange)
         {
             ShowJudge("Perfect!", Color.yellow);
-        }else if (bestDist <= goodRange)
+            if(scoreManager) scoreManager.AddScore(PERFECT_POINT); // スコアを300点追加 
+        }
+        else if (bestDist <= goodRange)
         {
             ShowJudge("Good", Color.green);
+            if(scoreManager) scoreManager.AddScore(GOOD_POINT); // スコアを100点追加 
         }
         else
         {
-            ShowJudge("Miss", Color.grey);
+            ShowJudge("Miss", Color.gray);
         }
 
         // 判定したノーツをリストから削除し、シーンからも削除する
@@ -72,6 +77,29 @@ public class JudgeLine : MonoBehaviour
 
         judgeText.text = text;
         judgeText.color = color;
+
+        // フェードアウト処理を開始　★追加
+        StopAllCoroutines(); // 既存のコルーチンを停止
+        StartCoroutine(FadeOutJudge());
+    }
+
+    // フェードアウト処理　★追加
+    private IEnumerator FadeOutJudge()
+    {
+        float duration = 0.5f; // フェードアウトにかける時間
+        float timer = 0f;
+
+        Color startColor = judgeText.color;
+        Color endColor = new Color(startColor.r, startColor.g, startColor.b, 0f);
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            judgeText.color = Color.Lerp(startColor, endColor, timer / duration);
+            yield return null;
+        }
+
+        judgeText.text = "";
     }
 
     // 判定ラインのTriggerにノーツが入ったとき
