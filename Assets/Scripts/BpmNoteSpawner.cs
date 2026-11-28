@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,27 +10,22 @@ public class BpmNoteSpawner : MonoBehaviour
     [SerializeField] private Transform judgeLine; // 判定ラインの位置
     [SerializeField] private float noteSpeed = 5f; // ノーツの落下速度(NoteMoverと同じ値にする)
 
-    [Header("楽曲・BPM設定")]
-    [SerializeField] private AudioSource music; // 楽曲のBGM
-    [SerializeField] private float bpm = 120 /*楽曲のBPMを設定してください*/; // 楽曲のBPM
-    [SerializeField] private int beatsPerBar = 4; // 1小節あたりのビート数
-    [SerializeField] private int bars = 4; // 何小節分ノーツを生成するか
-    [SerializeField] private int subdivision = 1; // 1ビートあたりの分割数(例: 2なら8分音符、4なら16分音符)
-    [SerializeField] private float songOffset = 0f; // 楽曲のオフセット時間(秒)
-
-    // ノーツ生成パターン (1: ノーツ生成, 0: ノーツ生成しない)
-    [SerializeField]
-    private int[] pattern =
-    {
-        1,0,  0,1,  1,0,  0,1,   // 1小節目
-        1,0,  1,0,  0,1,  0,1,   // 2小節目
-        1,0,  0,1,  1,0,  1,0,   // 3小節目
-        1,1,  1,1,  1,1,  1,1    // 4小節目
-    };
+    [Header("楽曲・チャート")]
+    [SerializeField] private MusicChart musicChart; // ノーツのBPMチャート情報
+    [SerializeField] private MusicPlayer musicPlayer; // 楽曲情報
 
     private readonly List<float> hitTimes = new List<float>(); // ノーツのヒットタイムリスト
     private float fallTime; // 落下時間(秒)
     private int index = 0; // 現在のノーツ生成インデックス
+
+    public enum KeyType
+    {
+        A,
+        S,
+        D,
+    }
+
+    public KeyType keyType; // 担当するキー
 
     void Start()
     {
@@ -45,34 +41,29 @@ public class BpmNoteSpawner : MonoBehaviour
         fallTime = distance / noteSpeed;
 
         // BPMから1拍の秒数を計算
-        float secPerBeat = 60f / bpm;
+        float secPerBeat = 60f / musicChart.bpm;
 
         // 何ステップ（四分 / 八分 / 十六分）分のノーツを出すか
-        int totalSteps = bars * beatsPerBar * subdivision;
+        int totalSteps = musicChart.beats * musicChart.beatsPerBar * musicChart.subdivision;
         Debug.Log(totalSteps);
         hitTimes.Clear();
 
         for (int step = 0; step < totalSteps; step++)
         {
-            
-            if (pattern[step] == 0) continue;
-            float beatIndex = step / (float)subdivision; // 現在のビートインデックス
+            int[] pattern = Array.ConvertAll(musicChart.pattern[step].Split(','), int.Parse);
+            if (keyType == KeyType.A && pattern[0] == 0) continue;
+            if (keyType == KeyType.S && pattern[1] == 0) continue;
+            if (keyType == KeyType.D && pattern[2] == 0) continue;
+
+            float beatIndex = step / (float)musicChart.subdivision; // 現在のビートインデックス
 
             // 曲開始からのPerfect 中心タイミング（秒）
-            float hitTime = songOffset + beatIndex * secPerBeat;
+            float hitTime = musicChart.offset + beatIndex * secPerBeat;
             hitTimes.Add(hitTime);
         }
 
         // 曲の再生
-        if (music)
-        {
-            music.time = 0f;
-            music.Play();
-        }
-        else
-        {
-            Debug.LogWarning("AudioSourceが設定されていません。");
-        }
+        musicPlayer.MusicPlay();
     }
 
     void Update()
@@ -81,7 +72,7 @@ public class BpmNoteSpawner : MonoBehaviour
         if (!notePrefab) return;
 
         // 現在の「曲時間」
-        float currentTime = music ? music.time : Time.time;
+        float currentTime = musicPlayer.CurrentTime;
 
         float spawnTime = hitTimes[index] - fallTime;
 
